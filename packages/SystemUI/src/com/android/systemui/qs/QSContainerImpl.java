@@ -102,7 +102,7 @@ public class QSContainerImpl extends FrameLayout implements
         super(context, attrs);
         mOverlayManager = IOverlayManager.Stub.asInterface(
                 ServiceManager.getService(Context.OVERLAY_SERVICE));
-        Handler mHandler = new Handler();
+        Handler handler = new Handler();
         SettingsObserver settingsObserver = new SettingsObserver(handler);
         settingsObserver.observe();
         mStatusBarHeaderMachine = new StatusBarHeaderMachine(context);
@@ -223,18 +223,16 @@ public class QSContainerImpl extends FrameLayout implements
     }
 
     private void setQsBackground() {
-
         if (mSetQsFromResources) {
             mQsBackGround = getContext().getDrawable(R.drawable.qs_background_primary);
-            if (mQsBackGround != null)
-                mQsBackGround.setAlpha(mQsBackGroundAlpha);
         } else {
             if (mQsBackGround != null)
                 mQsBackGround.setColorFilter(mCurrentColor, PorterDuff.Mode.SRC_ATOP);
         }
-        if (mQsBackGround != null && mBackground != null) {
+        if (mQsBackGround != null)
+            mQsBackGround.setAlpha(mQsBackGroundAlpha);
+        if (mQsBackGround != null && mBackground != null)
             mBackground.setBackground(mQsBackGround);
-        }
     }
 
     @Override
