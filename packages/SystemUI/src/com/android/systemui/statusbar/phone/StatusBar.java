@@ -6235,6 +6235,7 @@ public class StatusBar extends SystemUI implements DemoMode, TunerService.Tunabl
                     updateSwitchStyle();
                 });
         }
+      }
 
         public void update() {
             ContentResolver resolver = mContext.getContentResolver();
