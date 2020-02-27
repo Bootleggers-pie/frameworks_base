@@ -25,7 +25,7 @@ import android.os.UserHandle;
 import android.os.RemoteException;
 import android.provider.Settings;
 import android.service.quicksettings.Tile;
-mport android.view.WindowManagerGlobal;
+import android.view.WindowManagerGlobal;
 import android.util.Log;
 
 import com.android.internal.logging.MetricsLogger;
@@ -91,6 +91,6 @@ public class ScreenshotTile extends QSTileImpl<BooleanState> {
         state.label = mContext.getString(R.string.quick_settings_screenshot_label);
         state.icon = ResourceIcon.get(R.drawable.ic_qs_screenshot);
         state.contentDescription =  mContext.getString(
-            R.string.quick_settings_screenshot_label)
+            R.string.quick_settings_screenshot_label);
     }
 }

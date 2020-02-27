@@ -3519,10 +3519,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                 case 15:
                         attrs.windowAnimations = com.android.internal.R.style.Animation_Toast_SlideRightLeft;
                         break;
-                attrs.windowAnimations = com.android.internal.R.style.Animation_Toast;
-                // Toasts can't be clickable
-                attrs.flags |= WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
-                break;
         }
     }
 
