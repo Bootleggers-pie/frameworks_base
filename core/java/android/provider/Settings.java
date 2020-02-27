@@ -5026,18 +5026,6 @@ public final class Settings {
         public static final String CUSTOM_AMBIENT_POCKETMODE_GESTURE = "custom_ambient_pocketmode_gesture";
 
         /**
-         * Battery Estimate
-         * @hide
-         */
-        public static final String SHOW_BATTERY_ESTIMATE = "show_battery_estimate";
-
-        /**
-         * Battery Estimate Position
-         * @hide
-         */
-        public static final String BATTERY_ESTIMATE_POSITION = "battery_estimate_position";
-
-        /**
          * Volume key controls ringtone or media sound stream
          * @hide
          */
@@ -5902,15 +5890,6 @@ public final class Settings {
         public static final String GAMING_MODE_DYNAMIC_STATE = "gaming_mode_dynamic_state";
 
         /**
-         * @hide
-         */
-        public static final String LOCK_SHOW_STATUS_BAR = "lockscreen_show_status_bar";
-
-        /** @hide */
-        private static final Validator LOCK_SHOW_STATUS_BAR_VALIDATOR =
-               BOOLEAN_VALIDATOR;
-
-        /**
          * Settings to backup. This is here so that it's in the same place as the settings
          * keys and easy to update.
          *
@@ -6036,8 +6015,7 @@ public final class Settings {
             DISPLAY_COLOR_ADJUSTMENT,
             DISPLAY_PICTURE_ADJUSTMENT,
             NETWORK_TRAFFIC_EXPANDED_STATUS_BAR_STATE,
-            LIVE_DISPLAY_HINTED,
-            LOCK_SHOW_STATUS_BAR,
+            LIVE_DISPLAY_HINTED
         };
 
         /**
@@ -6249,7 +6227,6 @@ public final class Settings {
             PRIVATE_SETTINGS.add(DISPLAY_PICTURE_ADJUSTMENT);
             PRIVATE_SETTINGS.add(LIVE_DISPLAY_HINTED);
             PRIVATE_SETTINGS.add(NETWORK_TRAFFIC_EXPANDED_STATUS_BAR_STATE);
-            PRIVATE_SETTINGS.add(LOCK_SHOW_STATUS_BAR);
         }
 
         /**
@@ -6423,7 +6400,6 @@ public final class Settings {
             VALIDATORS.put(DISPLAY_PICTURE_ADJUSTMENT, DISPLAY_PICTURE_ADJUSTMENT_VALIDATOR);
             VALIDATORS.put(LIVE_DISPLAY_HINTED, LIVE_DISPLAY_HINTED_VALIDATOR);
             VALIDATORS.put(NETWORK_TRAFFIC_EXPANDED_STATUS_BAR_STATE, NETWORK_TRAFFIC_EXPANDED_STATUS_BAR_STATE_VALIDATOR);
-            VALIDATORS.put(LOCK_SHOW_STATUS_BAR,LOCK_SHOW_STATUS_BAR_VALIDATOR);
         }
 
         /**
