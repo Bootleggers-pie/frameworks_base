@@ -5908,6 +5908,15 @@ public final class Settings {
         public static final String HIDE_LOCKSCREEN_STATUS_BAR = "hide_lockscreen_status_bar";
 
         /**
+         * Whether to change the transparency of the qs panel
+         * @hide
+         */
+        public static final String QS_PANEL_BG_ALPHA = "qs_panel_bg_alpha";
+
+        /** @hide */
+        private static final Validator QS_PANEL_BG_ALPHA_VALIDATOR = ANY_INTEGER_VALIDATOR;
+
+        /**
          * Settings to backup. This is here so that it's in the same place as the settings
          * keys and easy to update.
          *
@@ -6033,7 +6042,8 @@ public final class Settings {
             DISPLAY_COLOR_ADJUSTMENT,
             DISPLAY_PICTURE_ADJUSTMENT,
             NETWORK_TRAFFIC_EXPANDED_STATUS_BAR_STATE,
-            LIVE_DISPLAY_HINTED
+            LIVE_DISPLAY_HINTED,
+            QS_PANEL_BG_ALPHA
         };
 
         /**
@@ -6246,6 +6256,7 @@ public final class Settings {
             PRIVATE_SETTINGS.add(LIVE_DISPLAY_HINTED);
             PRIVATE_SETTINGS.add(NETWORK_TRAFFIC_EXPANDED_STATUS_BAR_STATE);
             PRIVATE_SETTINGS.add(HIDE_LOCKSCREEN_STATUS_BAR);
+            PRIVATE_SETTINGS.add(QS_PANEL_BG_ALPHA);
         }
 
         /**
@@ -6419,6 +6430,7 @@ public final class Settings {
             VALIDATORS.put(DISPLAY_PICTURE_ADJUSTMENT, DISPLAY_PICTURE_ADJUSTMENT_VALIDATOR);
             VALIDATORS.put(LIVE_DISPLAY_HINTED, LIVE_DISPLAY_HINTED_VALIDATOR);
             VALIDATORS.put(NETWORK_TRAFFIC_EXPANDED_STATUS_BAR_STATE, NETWORK_TRAFFIC_EXPANDED_STATUS_BAR_STATE_VALIDATOR);
+            VALIDATORS.put(QS_PANEL_BG_ALPHA, QS_PANEL_BG_ALPHA_VALIDATOR);
         }
 
         /**
