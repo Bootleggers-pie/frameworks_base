@@ -57,7 +57,6 @@ public class MtpStorageManagerTest {
 
     private ArrayList<Integer> objectsAdded;
     private ArrayList<Integer> objectsRemoved;
-    private ArrayList<Integer> objectsInfoChanged;
 
     private File mainStorageDir;
     private File secondaryStorageDir;
@@ -73,42 +72,15 @@ public class MtpStorageManagerTest {
         Log.d(TAG, Thread.currentThread().getStackTrace()[3].getMethodName());
     }
 
-    private static void logMethodValue(String szVar, int iValue)
-    {
-        Log.d(TAG, szVar + "=" + iValue + ": " + Thread.currentThread().getStackTrace()[3].getMethodName());
-    }
-
-    private static void vWriteNewFile(File newFile) {
-        try {
-            new FileOutputStream(newFile).write(new byte[] {0, 0, 0});
-        } catch (IOException e) {
-            Assert.fail();
-        }
-    }
-
     private static File createNewFile(File parent) {
-        return createNewFile(parent, "file-" + UUID.randomUUID().toString());
-    }
-
-    private static File createNewFileNonZero(File parent) {
-        return createNewFileNonZero(parent, "file-" + UUID.randomUUID().toString());
+        return createNewFile(parent, UUID.randomUUID().toString());
     }
 
     private static File createNewFile(File parent, String name) {
-        return createNewFile(parent, name, false);
-    }
-
-    private static File createNewFileNonZero(File parent, String name) {
-        return createNewFile(parent, name, true);
-    }
-
-    private static File createNewFile(File parent, String name, boolean fgNonZero) {
         try {
             File ret = new File(parent, name);
             if (!ret.createNewFile())
                 throw new AssertionError("Failed to create file");
-            if (fgNonZero)
-                vWriteNewFile(ret);     // create non-zero size file
             return ret;
         } catch (IOException e) {
             throw new AssertionError(e.getMessage());
@@ -123,12 +95,11 @@ public class MtpStorageManagerTest {
     }
 
     private static File createNewDir(File parent) {
-        return createNewDir(parent, "dir-" + UUID.randomUUID().toString());
+        return createNewDir(parent, UUID.randomUUID().toString());
     }
 
     @Before
     public void before() {
-        FileUtils.deleteContentsAndDir(TEMP_DIR_FILE);
         Assert.assertTrue(TEMP_DIR_FILE.mkdir());
         mainStorageDir = createNewDir(TEMP_DIR_FILE);
         secondaryStorageDir = createNewDir(TEMP_DIR_FILE);
@@ -140,25 +111,16 @@ public class MtpStorageManagerTest {
 
         objectsAdded = new ArrayList<>();
         objectsRemoved = new ArrayList<>();
-        objectsInfoChanged = new ArrayList<>();
 
         manager = new MtpStorageManager(new MtpStorageManager.MtpNotifier() {
             @Override
             public void sendObjectAdded(int id) {
-                Log.d(TAG, "sendObjectAdded " + id);
                 objectsAdded.add(id);
             }
 
             @Override
             public void sendObjectRemoved(int id) {
-                Log.d(TAG, "sendObjectRemoved " + id);
                 objectsRemoved.add(id);
-            }
-
-            @Override
-            public void sendObjectInfoChanged(int id) {
-                Log.d(TAG, "sendObjectInfoChanged: " + id);
-                objectsInfoChanged.add(id);
             }
         }, null);
 
@@ -507,16 +469,11 @@ public class MtpStorageManagerTest {
                 mainMtpStorage.getStorageId());
         Assert.assertEquals(stream.count(), 0);
 
-        File newFile = createNewFileNonZero(mainStorageDir);
+        File newFile = createNewFile(mainStorageDir);
         manager.flushEvents();
         Assert.assertEquals(objectsAdded.size(), 1);
         Assert.assertEquals(manager.getObject(objectsAdded.get(0)).getPath().toString(),
                 newFile.getPath());
-
-        logMethodValue("objectsInfoChanged.size", objectsInfoChanged.size());
-        if (objectsInfoChanged.size() > 0)
-            Assert.assertEquals(objectsAdded.get(0).intValue(), objectsInfoChanged.get(0).intValue());
-
         Assert.assertTrue(manager.checkConsistency());
     }
 
@@ -534,7 +491,6 @@ public class MtpStorageManagerTest {
         Assert.assertEquals(manager.getObject(objectsAdded.get(0)).getPath().toString(),
                 newDir.getPath());
         Assert.assertTrue(manager.getObject(objectsAdded.get(0)).isDir());
-        Assert.assertEquals(objectsInfoChanged.size(), 0);
         Assert.assertTrue(manager.checkConsistency());
     }
 
@@ -552,7 +508,6 @@ public class MtpStorageManagerTest {
         Assert.assertEquals(manager.getObject(objectsAdded.get(2)).getPath().toString(),
                 newDir.getPath());
         Assert.assertTrue(manager.getObject(objectsAdded.get(2)).isDir());
-        Assert.assertEquals(objectsInfoChanged.size(), 0);
         Assert.assertTrue(manager.checkConsistency());
     }
 
@@ -576,7 +531,7 @@ public class MtpStorageManagerTest {
     @SmallTest
     public void testObjectMoved() {
         logMethodName();
-        File newFile = createNewFileNonZero(mainStorageDir);
+        File newFile = createNewFile(mainStorageDir);
         Stream<MtpStorageManager.MtpObject> stream = manager.getObjects(0xFFFFFFFF, 0,
                 mainMtpStorage.getStorageId());
         Assert.assertEquals(stream.count(), 1);
@@ -589,7 +544,6 @@ public class MtpStorageManagerTest {
         Assert.assertEquals(manager.getObject(objectsAdded.get(0)).getPath().toString(),
                 toFile.getPath());
         Assert.assertNull(manager.getObject(objectsRemoved.get(0)));
-        Assert.assertEquals(objectsInfoChanged.size(), 0);
         Assert.assertTrue(manager.checkConsistency());
     }
 
@@ -607,7 +561,7 @@ public class MtpStorageManagerTest {
                 "newFile", MtpConstants.FORMAT_UNDEFINED);
         Assert.assertEquals(id, 1);
 
-        File newFile = createNewFileNonZero(mainStorageDir, "newFile");
+        File newFile = createNewFile(mainStorageDir, "newFile");
         manager.flushEvents();
         MtpStorageManager.MtpObject obj = manager.getObject(id);
         Assert.assertTrue(manager.endSendObject(obj, true));
@@ -632,12 +586,11 @@ public class MtpStorageManagerTest {
         Assert.assertTrue(manager.endSendObject(obj, true));
         Assert.assertEquals(obj.getPath().toString(), newFile.getPath());
         Assert.assertEquals(objectsAdded.size(), 0);
-        Assert.assertEquals(objectsInfoChanged.size(), 0);
         Assert.assertEquals(obj.getFormat(), MtpConstants.FORMAT_ASSOCIATION);
         Assert.assertTrue(manager.checkConsistency());
 
         // Check that new dir receives events
-        File newerFile = createNewFileNonZero(newFile);
+        File newerFile = createNewFile(newFile);
         manager.flushEvents();
         Assert.assertEquals(objectsAdded.size(), 1);
         Assert.assertEquals(manager.getObject(objectsAdded.get(0)).getPath().toString(),
@@ -656,7 +609,7 @@ public class MtpStorageManagerTest {
         MtpStorageManager.MtpObject obj = manager.getObject(id);
         Assert.assertTrue(manager.endSendObject(obj, true));
 
-        File newFile = createNewFileNonZero(mainStorageDir, "newFile");
+        File newFile = createNewFile(mainStorageDir, "newFile");
         manager.flushEvents();
         Assert.assertEquals(obj.getPath().toString(), newFile.getPath());
         Assert.assertEquals(objectsAdded.size(), 0);
@@ -679,12 +632,11 @@ public class MtpStorageManagerTest {
         manager.flushEvents();
         Assert.assertEquals(obj.getPath().toString(), newFile.getPath());
         Assert.assertEquals(objectsAdded.size(), 0);
-        Assert.assertEquals(objectsInfoChanged.size(), 0);
         Assert.assertEquals(obj.getFormat(), MtpConstants.FORMAT_ASSOCIATION);
         Assert.assertTrue(manager.checkConsistency());
 
         // Check that new dir receives events
-        File newerFile = createNewFileNonZero(newFile);
+        File newerFile = createNewFile(newFile);
         manager.flushEvents();
         Assert.assertEquals(objectsAdded.size(), 1);
         Assert.assertEquals(manager.getObject(objectsAdded.get(0)).getPath().toString(),
@@ -737,13 +689,12 @@ public class MtpStorageManagerTest {
         Assert.assertEquals(id, 1);
         MtpStorageManager.MtpObject obj = manager.getObject(id);
 
-        File newFile = createNewFileNonZero(mainStorageDir, "newFile");
+        File newFile = createNewFile(mainStorageDir, "newFile");
         Assert.assertTrue(newFile.delete());
         manager.flushEvents();
         Assert.assertTrue(manager.endSendObject(obj, false));
         Assert.assertEquals(objectsRemoved.size(), 0);
         Assert.assertEquals(objectsAdded.size(), 0);
-        Assert.assertEquals(objectsInfoChanged.size(), 0);
         Assert.assertTrue(manager.checkConsistency());
     }
 
@@ -762,21 +713,15 @@ public class MtpStorageManagerTest {
         manager.flushEvents();
         Assert.assertTrue(manager.endSendObject(obj, false));
         Assert.assertNotEquals(objectsAdded.get(0).intValue(), id);
-        logMethodValue("objectsInfoChanged.size", objectsInfoChanged.size());
-        if (objectsInfoChanged.size() > 0)
-            Assert.assertNotEquals(objectsInfoChanged.get(0).intValue(), id);
         Assert.assertNull(manager.getObject(id));
         Assert.assertEquals(manager.getObject(objectsAdded.get(0)).getPath().toString(),
                 newDir.getPath());
         Assert.assertTrue(manager.checkConsistency());
 
         // Expect events in new dir
-        createNewFileNonZero(newDir);
+        createNewFile(newDir);
         manager.flushEvents();
         Assert.assertEquals(objectsAdded.size(), 2);
-        logMethodValue("objectsInfoChanged.size", objectsInfoChanged.size());
-        if (objectsInfoChanged.size() == 1)
-            Assert.assertEquals(objectsAdded.get(1).intValue(), objectsInfoChanged.get(0).intValue());
         Assert.assertTrue(manager.checkConsistency());
     }
 
@@ -819,13 +764,13 @@ public class MtpStorageManagerTest {
     public void testRemoveObjectDir() {
         logMethodName();
         File newDir = createNewDir(mainStorageDir);
-        createNewFileNonZero(createNewDir(newDir));
+        createNewFile(createNewDir(newDir));
         MtpStorageManager.MtpObject obj = manager.getObjects(0xFFFFFFFF, 0,
                 mainMtpStorage.getStorageId()).findFirst().get();
         manager.getObjects(obj.getId(), 0, mainMtpStorage.getStorageId());
         Assert.assertTrue(manager.beginRemoveObject(obj));
 
-        createNewFileNonZero(newDir);
+        createNewFile(newDir);
         Assert.assertTrue(FileUtils.deleteContentsAndDir(newDir));
         manager.flushEvents();
         Assert.assertTrue(manager.endRemoveObject(obj, true));
@@ -866,16 +811,13 @@ public class MtpStorageManagerTest {
         Assert.assertTrue(manager.beginRemoveObject(obj));
 
         Assert.assertTrue(newFile.delete());
-        createNewFileNonZero(mainStorageDir, newFile.getName());
+        createNewFile(mainStorageDir, newFile.getName());
         manager.flushEvents();
         Assert.assertTrue(manager.endRemoveObject(obj, true));
         Assert.assertEquals(objectsRemoved.size(), 0);
         Assert.assertEquals(objectsAdded.size(), 1);
         Assert.assertNull(manager.getObject(id));
         Assert.assertNotEquals(objectsAdded.get(0).intValue(), id);
-        logMethodValue("objectsInfoChanged.size", objectsInfoChanged.size());
-        if (objectsInfoChanged.size() > 0)
-            Assert.assertNotEquals(objectsInfoChanged.get(0).intValue(), objectsAdded.get(0).intValue());
         Assert.assertTrue(manager.checkConsistency());
     }
 
@@ -908,7 +850,6 @@ public class MtpStorageManagerTest {
         Assert.assertTrue(manager.endRemoveObject(obj, false));
         Assert.assertEquals(manager.getObject(obj.getId()), obj);
         Assert.assertEquals(objectsAdded.size(), 1);
-        Assert.assertEquals(objectsInfoChanged.size(), 0);
         Assert.assertTrue(manager.checkConsistency());
     }
 
@@ -934,7 +875,7 @@ public class MtpStorageManagerTest {
     @SmallTest
     public void testCopyObjectSuccess() {
         logMethodName();
-        File newFile = createNewFileNonZero(mainStorageDir);
+        File newFile = createNewFile(mainStorageDir);
         File newDir = createNewDir(mainStorageDir);
         MtpStorageManager.MtpObject dirObj = manager.getObjects(0xFFFFFFFF, 0,
                 mainMtpStorage.getStorageId())
@@ -945,7 +886,7 @@ public class MtpStorageManagerTest {
 
         int id = manager.beginCopyObject(fileObj, dirObj);
         Assert.assertNotEquals(id, -1);
-        createNewFileNonZero(newDir, newFile.getName());
+        createNewFile(newDir, newFile.getName());
         manager.flushEvents();
         MtpStorageManager.MtpObject obj = manager.getObject(id);
         Assert.assertTrue(manager.endCopyObject(obj, true));
@@ -959,9 +900,9 @@ public class MtpStorageManagerTest {
         logMethodName();
         File newDirFrom = createNewDir(mainStorageDir);
         File newDirFrom1 = createNewDir(newDirFrom);
-        File newDirFrom2 = createNewFileNonZero(newDirFrom1);
-        File delayedFile = createNewFileNonZero(newDirFrom);
-        File deletedFile = createNewFileNonZero(newDirFrom);
+        File newDirFrom2 = createNewFile(newDirFrom1);
+        File delayedFile = createNewFile(newDirFrom);
+        File deletedFile = createNewFile(newDirFrom);
         File newDirTo = createNewDir(mainStorageDir);
         MtpStorageManager.MtpObject toObj = manager.getObjects(0xFFFFFFFF, 0,
                 mainMtpStorage.getStorageId())
@@ -975,9 +916,9 @@ public class MtpStorageManagerTest {
         Assert.assertNotEquals(id, -1);
         File copiedDir = createNewDir(newDirTo, newDirFrom.getName());
         File copiedDir1 = createNewDir(copiedDir, newDirFrom1.getName());
-        createNewFileNonZero(copiedDir1, newDirFrom2.getName());
-        createNewFileNonZero(copiedDir, "extraFile");
-        File toDelete = createNewFileNonZero(copiedDir, deletedFile.getName());
+        createNewFile(copiedDir1, newDirFrom2.getName());
+        createNewFile(copiedDir, "extraFile");
+        File toDelete = createNewFile(copiedDir, deletedFile.getName());
         manager.flushEvents();
         Assert.assertTrue(toDelete.delete());
         manager.flushEvents();
@@ -986,13 +927,13 @@ public class MtpStorageManagerTest {
         Assert.assertEquals(objectsAdded.size(), 1);
         Assert.assertEquals(objectsRemoved.size(), 1);
 
-        createNewFileNonZero(copiedDir, delayedFile.getName());
+        createNewFile(copiedDir, delayedFile.getName());
         manager.flushEvents();
         Assert.assertTrue(manager.checkConsistency());
 
         // Expect events in the visited dir, but not the unvisited dir.
-        createNewFileNonZero(copiedDir);
-        createNewFileNonZero(copiedDir1);
+        createNewFile(copiedDir);
+        createNewFile(copiedDir1);
         manager.flushEvents();
         Assert.assertEquals(objectsAdded.size(), 2);
         Assert.assertEquals(objectsAdded.size(), 2);
@@ -1006,7 +947,7 @@ public class MtpStorageManagerTest {
     @SmallTest
     public void testCopyObjectFailed() {
         logMethodName();
-        File newFile = createNewFileNonZero(mainStorageDir);
+        File newFile = createNewFile(mainStorageDir);
         File newDir = createNewDir(mainStorageDir);
         MtpStorageManager.MtpObject dirObj = manager.getObjects(0xFFFFFFFF, 0,
                 mainMtpStorage.getStorageId())
@@ -1021,7 +962,6 @@ public class MtpStorageManagerTest {
         MtpStorageManager.MtpObject obj = manager.getObject(id);
         Assert.assertTrue(manager.endCopyObject(obj, false));
         Assert.assertEquals(objectsAdded.size(), 0);
-        Assert.assertEquals(objectsInfoChanged.size(), 0);
         Assert.assertTrue(manager.checkConsistency());
     }
 
@@ -1029,7 +969,7 @@ public class MtpStorageManagerTest {
     @SmallTest
     public void testCopyObjectFailedAdded() {
         logMethodName();
-        File newFile = createNewFileNonZero(mainStorageDir);
+        File newFile = createNewFile(mainStorageDir);
         File newDir = createNewDir(mainStorageDir);
         MtpStorageManager.MtpObject dirObj = manager.getObjects(0xFFFFFFFF, 0,
                 mainMtpStorage.getStorageId())
@@ -1049,7 +989,7 @@ public class MtpStorageManagerTest {
         Assert.assertTrue(manager.checkConsistency());
 
         // Expect events in new dir
-        createNewFileNonZero(addedDir);
+        createNewFile(addedDir);
         manager.flushEvents();
         Assert.assertEquals(objectsAdded.size(), 2);
         Assert.assertTrue(manager.checkConsistency());
@@ -1059,7 +999,7 @@ public class MtpStorageManagerTest {
     @SmallTest
     public void testCopyObjectFailedDeleted() {
         logMethodName();
-        File newFile = createNewFileNonZero(mainStorageDir);
+        File newFile = createNewFile(mainStorageDir);
         File newDir = createNewDir(mainStorageDir);
         MtpStorageManager.MtpObject dirObj = manager.getObjects(0xFFFFFFFF, 0,
                 mainMtpStorage.getStorageId())
@@ -1070,7 +1010,7 @@ public class MtpStorageManagerTest {
 
         int id = manager.beginCopyObject(fileObj, dirObj);
         Assert.assertNotEquals(id, -1);
-        Assert.assertTrue(createNewFileNonZero(newDir, newFile.getName()).delete());
+        Assert.assertTrue(createNewFile(newDir, newFile.getName()).delete());
         manager.flushEvents();
         MtpStorageManager.MtpObject obj = manager.getObject(id);
         Assert.assertTrue(manager.endCopyObject(obj, false));
@@ -1082,7 +1022,7 @@ public class MtpStorageManagerTest {
     @SmallTest
     public void testRenameObjectSuccess() {
         logMethodName();
-        File newFile = createNewFileNonZero(mainStorageDir);
+        File newFile = createNewFile(mainStorageDir);
         MtpStorageManager.MtpObject obj = manager.getObjects(0xFFFFFFFF, 0,
                 mainMtpStorage.getStorageId()).findFirst().get();
         Assert.assertTrue(manager.beginRenameObject(obj, "renamed"));
@@ -1093,7 +1033,6 @@ public class MtpStorageManagerTest {
         Assert.assertTrue(manager.endRenameObject(obj, newFile.getName(), true));
 
         Assert.assertEquals(objectsAdded.size(), 0);
-        Assert.assertEquals(objectsInfoChanged.size(), 0);
         Assert.assertEquals(objectsRemoved.size(), 0);
         Assert.assertEquals(obj.getPath().toString(), renamed.getPath());
 
@@ -1115,7 +1054,6 @@ public class MtpStorageManagerTest {
         Assert.assertTrue(manager.endRenameObject(obj, newDir.getName(), true));
 
         Assert.assertEquals(objectsAdded.size(), 0);
-        Assert.assertEquals(objectsInfoChanged.size(), 0);
         Assert.assertEquals(objectsRemoved.size(), 0);
         Assert.assertEquals(obj.getPath().toString(), renamed.getPath());
 
@@ -1125,7 +1063,6 @@ public class MtpStorageManagerTest {
         createNewFile(renamed);
         manager.flushEvents();
         Assert.assertEquals(objectsAdded.size(), 0);
-        Assert.assertEquals(objectsInfoChanged.size(), 0);
         Assert.assertTrue(manager.checkConsistency());
     }
 
@@ -1145,14 +1082,13 @@ public class MtpStorageManagerTest {
         Assert.assertTrue(manager.endRenameObject(obj, newDir.getName(), true));
 
         Assert.assertEquals(objectsAdded.size(), 0);
-        Assert.assertEquals(objectsInfoChanged.size(), 0);
         Assert.assertEquals(objectsRemoved.size(), 0);
         Assert.assertEquals(obj.getPath().toString(), renamed.getPath());
 
         Assert.assertTrue(manager.checkConsistency());
 
         // Expect events since the dir was visited
-        createNewFileNonZero(renamed);
+        createNewFile(renamed);
         manager.flushEvents();
         Assert.assertEquals(objectsAdded.size(), 1);
         Assert.assertTrue(manager.checkConsistency());
@@ -1162,7 +1098,7 @@ public class MtpStorageManagerTest {
     @SmallTest
     public void testRenameObjectDelayed() {
         logMethodName();
-        File newFile = createNewFileNonZero(mainStorageDir);
+        File newFile = createNewFile(mainStorageDir);
         MtpStorageManager.MtpObject obj = manager.getObjects(0xFFFFFFFF, 0,
                 mainMtpStorage.getStorageId()).findFirst().get();
         Assert.assertTrue(manager.beginRenameObject(obj, "renamed"));
@@ -1173,7 +1109,6 @@ public class MtpStorageManagerTest {
         manager.flushEvents();
 
         Assert.assertEquals(objectsAdded.size(), 0);
-        Assert.assertEquals(objectsInfoChanged.size(), 0);
         Assert.assertEquals(objectsRemoved.size(), 0);
         Assert.assertEquals(obj.getPath().toString(), renamed.getPath());
 
@@ -1196,14 +1131,13 @@ public class MtpStorageManagerTest {
         manager.flushEvents();
 
         Assert.assertEquals(objectsAdded.size(), 0);
-        Assert.assertEquals(objectsInfoChanged.size(), 0);
         Assert.assertEquals(objectsRemoved.size(), 0);
         Assert.assertEquals(obj.getPath().toString(), renamed.getPath());
 
         Assert.assertTrue(manager.checkConsistency());
 
         // Expect events since the dir was visited
-        createNewFileNonZero(renamed);
+        createNewFile(renamed);
         manager.flushEvents();
         Assert.assertEquals(objectsAdded.size(), 1);
         Assert.assertTrue(manager.checkConsistency());
@@ -1213,7 +1147,7 @@ public class MtpStorageManagerTest {
     @SmallTest
     public void testRenameObjectFailed() {
         logMethodName();
-        File newFile = createNewFileNonZero(mainStorageDir);
+        File newFile = createNewFile(mainStorageDir);
         MtpStorageManager.MtpObject obj = manager.getObjects(0xFFFFFFFF, 0,
                 mainMtpStorage.getStorageId()).findFirst().get();
         Assert.assertTrue(manager.beginRenameObject(obj, "renamed"));
@@ -1221,7 +1155,6 @@ public class MtpStorageManagerTest {
         Assert.assertTrue(manager.endRenameObject(obj, newFile.getName(), false));
 
         Assert.assertEquals(objectsAdded.size(), 0);
-        Assert.assertEquals(objectsInfoChanged.size(), 0);
         Assert.assertEquals(objectsRemoved.size(), 0);
 
         Assert.assertTrue(manager.checkConsistency());
@@ -1231,7 +1164,7 @@ public class MtpStorageManagerTest {
     @SmallTest
     public void testRenameObjectFailedOldRemoved() {
         logMethodName();
-        File newFile = createNewFileNonZero(mainStorageDir);
+        File newFile = createNewFile(mainStorageDir);
         MtpStorageManager.MtpObject obj = manager.getObjects(0xFFFFFFFF, 0,
                 mainMtpStorage.getStorageId()).findFirst().get();
         Assert.assertTrue(manager.beginRenameObject(obj, "renamed"));
@@ -1241,7 +1174,6 @@ public class MtpStorageManagerTest {
         Assert.assertTrue(manager.endRenameObject(obj, newFile.getName(), false));
 
         Assert.assertEquals(objectsAdded.size(), 0);
-        Assert.assertEquals(objectsInfoChanged.size(), 0);
         Assert.assertEquals(objectsRemoved.size(), 1);
 
         Assert.assertTrue(manager.checkConsistency());
@@ -1251,19 +1183,16 @@ public class MtpStorageManagerTest {
     @SmallTest
     public void testRenameObjectFailedNewAdded() {
         logMethodName();
-        File newFile = createNewFileNonZero(mainStorageDir);
+        File newFile = createNewFile(mainStorageDir);
         MtpStorageManager.MtpObject obj = manager.getObjects(0xFFFFFFFF, 0,
                 mainMtpStorage.getStorageId()).findFirst().get();
         Assert.assertTrue(manager.beginRenameObject(obj, "renamed"));
 
-        createNewFileNonZero(mainStorageDir, "renamed");
+        createNewFile(mainStorageDir, "renamed");
         manager.flushEvents();
         Assert.assertTrue(manager.endRenameObject(obj, newFile.getName(), false));
 
         Assert.assertEquals(objectsAdded.size(), 1);
-        logMethodValue("objectsInfoChanged.size", objectsInfoChanged.size());
-        if (objectsInfoChanged.size() > 0)
-            Assert.assertNotEquals(objectsAdded.get(0).intValue(), objectsInfoChanged.get(0).intValue());
         Assert.assertEquals(objectsRemoved.size(), 0);
 
         Assert.assertTrue(manager.checkConsistency());
@@ -1273,7 +1202,7 @@ public class MtpStorageManagerTest {
     @SmallTest
     public void testMoveObjectSuccess() {
         logMethodName();
-        File newFile = createNewFileNonZero(mainStorageDir);
+        File newFile = createNewFile(mainStorageDir);
         File dir = createNewDir(mainStorageDir);
         MtpStorageManager.MtpObject dirObj = manager.getObjects(0xFFFFFFFF, 0,
                 mainMtpStorage.getStorageId())
@@ -1291,7 +1220,6 @@ public class MtpStorageManagerTest {
                 dirObj, newFile.getName(), true));
 
         Assert.assertEquals(objectsAdded.size(), 0);
-        Assert.assertEquals(objectsInfoChanged.size(), 0);
         Assert.assertEquals(objectsRemoved.size(), 0);
         Assert.assertEquals(fileObj.getPath().toString(), moved.getPath());
 
@@ -1320,7 +1248,6 @@ public class MtpStorageManagerTest {
                 dirObj, movedDir.getName(), true));
 
         Assert.assertEquals(objectsAdded.size(), 0);
-        Assert.assertEquals(objectsInfoChanged.size(), 0);
         Assert.assertEquals(objectsRemoved.size(), 0);
         Assert.assertEquals(movedObj.getPath().toString(), renamed.getPath());
 
@@ -1330,7 +1257,6 @@ public class MtpStorageManagerTest {
         createNewFile(renamed);
         manager.flushEvents();
         Assert.assertEquals(objectsAdded.size(), 0);
-        Assert.assertEquals(objectsInfoChanged.size(), 0);
         Assert.assertTrue(manager.checkConsistency());
     }
 
@@ -1357,14 +1283,13 @@ public class MtpStorageManagerTest {
                 dirObj, movedDir.getName(), true));
 
         Assert.assertEquals(objectsAdded.size(), 0);
-        Assert.assertEquals(objectsInfoChanged.size(), 0);
         Assert.assertEquals(objectsRemoved.size(), 0);
         Assert.assertEquals(movedObj.getPath().toString(), renamed.getPath());
 
         Assert.assertTrue(manager.checkConsistency());
 
         // Expect events since the dir was visited
-        createNewFileNonZero(renamed);
+        createNewFile(renamed);
         manager.flushEvents();
         Assert.assertEquals(objectsAdded.size(), 1);
         Assert.assertTrue(manager.checkConsistency());
@@ -1374,7 +1299,7 @@ public class MtpStorageManagerTest {
     @SmallTest
     public void testMoveObjectDelayed() {
         logMethodName();
-        File newFile = createNewFileNonZero(mainStorageDir);
+        File newFile = createNewFile(mainStorageDir);
         File dir = createNewDir(mainStorageDir);
         MtpStorageManager.MtpObject dirObj = manager.getObjects(0xFFFFFFFF, 0,
                 mainMtpStorage.getStorageId())
@@ -1423,14 +1348,13 @@ public class MtpStorageManagerTest {
         manager.flushEvents();
 
         Assert.assertEquals(objectsAdded.size(), 0);
-        Assert.assertEquals(objectsInfoChanged.size(), 0);
         Assert.assertEquals(objectsRemoved.size(), 0);
         Assert.assertEquals(movedObj.getPath().toString(), renamed.getPath());
 
         Assert.assertTrue(manager.checkConsistency());
 
         // Expect events since the dir was visited
-        createNewFileNonZero(renamed);
+        createNewFile(renamed);
         manager.flushEvents();
         Assert.assertEquals(objectsAdded.size(), 1);
         Assert.assertTrue(manager.checkConsistency());
@@ -1440,7 +1364,7 @@ public class MtpStorageManagerTest {
     @SmallTest
     public void testMoveObjectFailed() {
         logMethodName();
-        File newFile = createNewFileNonZero(mainStorageDir);
+        File newFile = createNewFile(mainStorageDir);
         File dir = createNewDir(mainStorageDir);
         MtpStorageManager.MtpObject dirObj = manager.getObjects(0xFFFFFFFF, 0,
                 mainMtpStorage.getStorageId())
@@ -1455,7 +1379,6 @@ public class MtpStorageManagerTest {
                 dirObj, newFile.getName(), false));
 
         Assert.assertEquals(objectsAdded.size(), 0);
-        Assert.assertEquals(objectsInfoChanged.size(), 0);
         Assert.assertEquals(objectsRemoved.size(), 0);
 
         Assert.assertTrue(manager.checkConsistency());
@@ -1465,7 +1388,7 @@ public class MtpStorageManagerTest {
     @SmallTest
     public void testMoveObjectFailedOldRemoved() {
         logMethodName();
-        File newFile = createNewFileNonZero(mainStorageDir);
+        File newFile = createNewFile(mainStorageDir);
         File dir = createNewDir(mainStorageDir);
         MtpStorageManager.MtpObject dirObj = manager.getObjects(0xFFFFFFFF, 0,
                 mainMtpStorage.getStorageId())
@@ -1482,7 +1405,6 @@ public class MtpStorageManagerTest {
                 dirObj, newFile.getName(), false));
 
         Assert.assertEquals(objectsAdded.size(), 0);
-        Assert.assertEquals(objectsInfoChanged.size(), 0);
         Assert.assertEquals(objectsRemoved.size(), 1);
 
         Assert.assertTrue(manager.checkConsistency());
@@ -1492,7 +1414,7 @@ public class MtpStorageManagerTest {
     @SmallTest
     public void testMoveObjectFailedNewAdded() {
         logMethodName();
-        File newFile = createNewFileNonZero(mainStorageDir);
+        File newFile = createNewFile(mainStorageDir);
         File dir = createNewDir(mainStorageDir);
         MtpStorageManager.MtpObject dirObj = manager.getObjects(0xFFFFFFFF, 0,
                 mainMtpStorage.getStorageId())
@@ -1502,7 +1424,7 @@ public class MtpStorageManagerTest {
                 .filter(o -> !o.isDir()).findFirst().get();
         Assert.assertTrue(manager.beginMoveObject(fileObj, dirObj));
 
-        createNewFileNonZero(dir, newFile.getName());
+        createNewFile(dir, newFile.getName());
         manager.flushEvents();
         Assert.assertTrue(manager.endMoveObject(
                 manager.getStorageRoot(mainMtpStorage.getStorageId()),
@@ -1518,14 +1440,14 @@ public class MtpStorageManagerTest {
     @SmallTest
     public void testMoveObjectXStorageSuccess() {
         logMethodName();
-        File newFile = createNewFileNonZero(mainStorageDir);
+        File newFile = createNewFile(mainStorageDir);
         MtpStorageManager.MtpObject fileObj = manager.getObjects(0xFFFFFFFF, 0,
                 mainMtpStorage.getStorageId()).findFirst().get();
         Assert.assertTrue(manager.beginMoveObject(fileObj,
                 manager.getStorageRoot(secondaryMtpStorage.getStorageId())));
 
         Assert.assertTrue(newFile.delete());
-        File moved = createNewFileNonZero(secondaryStorageDir, newFile.getName());
+        File moved = createNewFile(secondaryStorageDir, newFile.getName());
         manager.flushEvents();
         Assert.assertTrue(manager.endMoveObject(
                 manager.getStorageRoot(mainMtpStorage.getStorageId()),
@@ -1559,7 +1481,6 @@ public class MtpStorageManagerTest {
                 movedDir.getName(), true));
 
         Assert.assertEquals(objectsAdded.size(), 0);
-        Assert.assertEquals(objectsInfoChanged.size(), 0);
         Assert.assertEquals(objectsRemoved.size(), 0);
         Assert.assertEquals(manager.getObject(movedObj.getId()).getPath().toString(),
                 moved.getPath());
@@ -1570,7 +1491,6 @@ public class MtpStorageManagerTest {
         createNewFile(moved);
         manager.flushEvents();
         Assert.assertEquals(objectsAdded.size(), 0);
-        Assert.assertEquals(objectsInfoChanged.size(), 0);
         Assert.assertTrue(manager.checkConsistency());
     }
 
@@ -1594,7 +1514,6 @@ public class MtpStorageManagerTest {
                 movedDir.getName(), true));
 
         Assert.assertEquals(objectsAdded.size(), 0);
-        Assert.assertEquals(objectsInfoChanged.size(), 0);
         Assert.assertEquals(objectsRemoved.size(), 0);
         Assert.assertEquals(manager.getObject(movedObj.getId()).getPath().toString(),
                 moved.getPath());
@@ -1602,7 +1521,7 @@ public class MtpStorageManagerTest {
         Assert.assertTrue(manager.checkConsistency());
 
         // Expect events since the dir was visited
-        createNewFileNonZero(moved);
+        createNewFile(moved);
         manager.flushEvents();
         Assert.assertEquals(objectsAdded.size(), 1);
         Assert.assertTrue(manager.checkConsistency());
@@ -1612,7 +1531,7 @@ public class MtpStorageManagerTest {
     @SmallTest
     public void testMoveObjectXStorageDelayed() {
         logMethodName();
-        File movedFile = createNewFileNonZero(mainStorageDir);
+        File movedFile = createNewFile(mainStorageDir);
         MtpStorageManager.MtpObject movedObj = manager.getObjects(0xFFFFFFFF, 0,
                 mainMtpStorage.getStorageId()).findFirst().get();
         Assert.assertTrue(manager.beginMoveObject(movedObj,
@@ -1624,7 +1543,7 @@ public class MtpStorageManagerTest {
                 movedFile.getName(), true));
 
         Assert.assertTrue(movedFile.delete());
-        File moved = createNewFileNonZero(secondaryStorageDir, movedFile.getName());
+        File moved = createNewFile(secondaryStorageDir, movedFile.getName());
         manager.flushEvents();
 
         Assert.assertEquals(objectsAdded.size(), 0);
@@ -1656,7 +1575,6 @@ public class MtpStorageManagerTest {
         manager.flushEvents();
 
         Assert.assertEquals(objectsAdded.size(), 0);
-        Assert.assertEquals(objectsInfoChanged.size(), 0);
         Assert.assertEquals(objectsRemoved.size(), 0);
         Assert.assertEquals(manager.getObject(movedObj.getId()).getPath().toString(),
                 moved.getPath());
@@ -1664,7 +1582,7 @@ public class MtpStorageManagerTest {
         Assert.assertTrue(manager.checkConsistency());
 
         // Expect events since the dir was visited
-        createNewFileNonZero(moved);
+        createNewFile(moved);
         manager.flushEvents();
         Assert.assertEquals(objectsAdded.size(), 1);
         Assert.assertTrue(manager.checkConsistency());
@@ -1674,7 +1592,7 @@ public class MtpStorageManagerTest {
     @SmallTest
     public void testMoveObjectXStorageFailed() {
         logMethodName();
-        File newFile = createNewFileNonZero(mainStorageDir);
+        File newFile = createNewFile(mainStorageDir);
         MtpStorageManager.MtpObject fileObj = manager.getObjects(0xFFFFFFFF, 0,
                 mainMtpStorage.getStorageId()).findFirst().get();
         Assert.assertTrue(manager.beginMoveObject(fileObj,
@@ -1686,7 +1604,6 @@ public class MtpStorageManagerTest {
                 newFile.getName(), false));
 
         Assert.assertEquals(objectsAdded.size(), 0);
-        Assert.assertEquals(objectsInfoChanged.size(), 0);
         Assert.assertEquals(objectsRemoved.size(), 0);
 
         Assert.assertTrue(manager.checkConsistency());
@@ -1696,7 +1613,7 @@ public class MtpStorageManagerTest {
     @SmallTest
     public void testMoveObjectXStorageFailedOldRemoved() {
         logMethodName();
-        File newFile = createNewFileNonZero(mainStorageDir);
+        File newFile = createNewFile(mainStorageDir);
         MtpStorageManager.MtpObject fileObj = manager.getObjects(0xFFFFFFFF, 0,
                 mainMtpStorage.getStorageId()).findFirst().get();
         Assert.assertTrue(manager.beginMoveObject(fileObj,
@@ -1710,7 +1627,6 @@ public class MtpStorageManagerTest {
                 newFile.getName(), false));
 
         Assert.assertEquals(objectsAdded.size(), 0);
-        Assert.assertEquals(objectsInfoChanged.size(), 0);
         Assert.assertEquals(objectsRemoved.size(), 1);
 
         Assert.assertTrue(manager.checkConsistency());
@@ -1720,13 +1636,13 @@ public class MtpStorageManagerTest {
     @SmallTest
     public void testMoveObjectXStorageFailedNewAdded() {
         logMethodName();
-        File newFile = createNewFileNonZero(mainStorageDir);
+        File newFile = createNewFile(mainStorageDir);
         MtpStorageManager.MtpObject fileObj = manager.getObjects(0xFFFFFFFF, 0,
                 mainMtpStorage.getStorageId()).findFirst().get();
         Assert.assertTrue(manager.beginMoveObject(fileObj,
                 manager.getStorageRoot(secondaryMtpStorage.getStorageId())));
 
-        createNewFileNonZero(secondaryStorageDir, newFile.getName());
+        createNewFile(secondaryStorageDir, newFile.getName());
         manager.flushEvents();
         Assert.assertTrue(manager.endMoveObject(
                 manager.getStorageRoot(mainMtpStorage.getStorageId()),
